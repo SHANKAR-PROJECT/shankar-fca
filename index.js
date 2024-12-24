@@ -77,21 +77,21 @@ function setOptions(globalOptions, options) {
 
 function buildAPI(globalOptions, html, jar) {
     var userID;
-  var cookie = jar.getCookies("https://www.facebook.com");
-  var maybeUser = cookie.filter(function(val) { return val.cookieString().split("=")[0] === "c_user"; });
-  var maybeTiktik = cookie.filter(function(val) { return val.cookieString().split("=")[0] === "i_user"; });
-  if (maybeUser.length === 0 && maybeTiktik.length === 0) {
-      return log.error('login', "Không tìm thấy cookie cho người dùng, vui lòng kiểm tra lại thông tin đăng nhập", 'error');
-  } else {
-      if (html.indexOf("/checkpoint/block/?next") > -1) {
-           return log.error('login', "Appstate die, vui lòng thay cái mới!", 'error');
-      }
-      if (maybeTiktik[0] && maybeTiktik[0].cookieString().includes('i_user')) {
-           userID = maybeTiktik[0].cookieString().split("=")[1].toString();
-      } else {
-           userID = maybeUser[0].cookieString().split("=")[1].toString();
-         }
-      }
+    var cookie = jar.getCookies("https://www.facebook.com");
+    var maybeUser = cookie.filter(function(val) { return val.cookieString().split("=")[0] === "c_user"; });
+    var maybeTiktik = cookie.filter(function(val) { return val.cookieString().split("=")[0] === "i_user"; });
+    if (maybeUser.length === 0 && maybeTiktik.length === 0) {
+        return log.error('login', "Unable to find user cookie, please check your login credentials", 'error');
+    } else {
+        if (html.indexOf("/checkpoint/block/?next") > -1) {
+            return log.error('login', "Appstate expired, please use a new one!", 'error');
+        }
+        if (maybeTiktik[0] && maybeTiktik[0].cookieString().includes('i_user')) {
+            userID = maybeTiktik[0].cookieString().split("=")[1].toString();
+        } else {
+            userID = maybeUser[0].cookieString().split("=")[1].toString();
+        }
+    }
 
     try {
         clearInterval(checkVerified);
@@ -109,20 +109,17 @@ function buildAPI(globalOptions, html, jar) {
         irisSeqID = oldFBMQTTMatch[1];
         mqttEndpoint = oldFBMQTTMatch[2];
         region = new URL(mqttEndpoint).searchParams.get("region").toUpperCase();
-        
     } else {
         let newFBMQTTMatch = html.match(/{"app_id":"219994525426954","endpoint":"(.+?)","iris_seq_id":"(.+?)"}/);
         if (newFBMQTTMatch) {
             irisSeqID = newFBMQTTMatch[2];
             mqttEndpoint = newFBMQTTMatch[1].replace(/\\\//g, "/");
             region = new URL(mqttEndpoint).searchParams.get("region").toUpperCase();
-            
         } else {
             let legacyFBMQTTMatch = html.match(/(\["MqttWebConfig",\[\],{fbid:")(.+?)(",appID:219994525426954,endpoint:")(.+?)(",pollingEndpoint:")(.+?)(3790])/);
             if (legacyFBMQTTMatch) {
                 mqttEndpoint = legacyFBMQTTMatch[4];
                 region = new URL(mqttEndpoint).searchParams.get("region").toUpperCase();
-                
             } else {
                 log.warn("login", "Cannot get MQTT region & sequence ID.");
                 noMqttData = html;
@@ -218,7 +215,6 @@ function buildAPI(globalOptions, html, jar) {
 
     return [ctx, defaultFuncs, api];
 }
-
 function makeLogin(jar, email, password, loginOptions, callback, prCallback) {
     return function(res) {
         var html = res.body;
